@@ -76,7 +76,7 @@ fn main() {
     let rho = 28.0;
     let beta = 8.0 / 3.0;
     let h = 0.01;
-    let n = 1024; // Adjust the number of iterations as needed
+    let n = 8;
 
     let key_stream = generate_key_stream(seed, sigma, rho, beta, h, n);
 
