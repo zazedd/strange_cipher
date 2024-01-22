@@ -9,3 +9,14 @@ edition = "2021"
 ascii_converter = "0.3.0"
 rand = "0.8.4"
 base64 = "0.21.7"
+tungstenite = "0.21.0"
+env_logger = "0.11.0"
+url = "2.5.0"
+
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
