@@ -1,7 +1,6 @@
 use std::io::{self, Write};
-use std::net::TcpStream;
 
-use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
+use tungstenite::{connect, Message};
 use url::Url;
 
 use base64::prelude::*;
@@ -11,11 +10,6 @@ enum ClientState {
     Syncing,
     Encrypting,
     Encrypted(String),
-}
-
-fn receive_msg(socket: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> () {
-    let msg = socket.read().expect("Error reading message");
-    println!("Recieved: {}", msg);
 }
 
 fn encrypt(message: &str, key_stream: &[u8]) -> Vec<u8> {
@@ -45,8 +39,8 @@ fn main() {
     }
 
     let seed = (-10.0, -7.0, 35.0);
-    let sigma = 10.0;
-    let rho = 28.0;
+    let sigma = 25.0;
+    let rho = 2.0;
     let beta = 8.0 / 3.0;
     let h = 0.01;
     let mut stream_state = ClientState::Syncing;
@@ -61,7 +55,7 @@ fn main() {
     let input = input.trim().to_string();
 
     common::send_request(&mut socket, "Sync Request", 1);
-    receive_msg(&mut socket);
+    common::receive_msg(&mut socket);
 
     match socket.get_mut() {
         tungstenite::stream::MaybeTlsStream::Plain(stream) => stream.set_nonblocking(true),
@@ -84,8 +78,6 @@ fn main() {
                     .send(Message::Binary(state.2.to_ne_bytes().to_vec()))
                     .expect("Could not send z coordinate");
 
-                println!("state = {:?}", state);
-
                 match common::read_non_blocking(&mut socket) {
                     Some(Message::Binary(v)) if v.as_slice() == [2] => {
                         println!("Server finished syncing. Encrypting now");
@@ -93,10 +85,6 @@ fn main() {
                     }
                     _ => (),
                 }
-
-                // Allows for a new message to be created, making the sync better, but
-                // slower
-                // sleep(Duration::new(0, 5000));
             }
 
             ClientState::Encrypting => {

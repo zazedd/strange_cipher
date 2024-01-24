@@ -39,7 +39,7 @@ fn main() {
     for stream in server.incoming() {
         spawn(move || {
             let callback = |req: &Request, mut response: Response| {
-                println!("Received a new ws handshake");
+                println!("New Client connected");
                 println!("The request's path is: {}", req.uri().path());
                 println!("The request's headers are:");
                 for (ref header, _value) in req.headers() {
@@ -47,9 +47,9 @@ fn main() {
                 }
 
                 // Let's add an additional header to our response to the client.
-                let headers = response.headers_mut();
-                headers.append("MyCustomHeader", ":)".parse().unwrap());
-                headers.append("SOME_TUNGSTENITE_HEADER", "header_value".parse().unwrap());
+                // let headers = response.headers_mut();
+                // headers.append("MyCustomHeader", ":)".parse().unwrap());
+                // headers.append("SOME_TUNGSTENITE_HEADER", "header_value".parse().unwrap());
 
                 Ok(response)
             };
@@ -63,8 +63,8 @@ fn main() {
                 .expect("Couldn't make socket non-blocking");
 
             let mut seed = (0.0, 1.0, 2.0);
-            let sigma = 10.0;
-            let rho = 28.0;
+            let sigma = 25.0;
+            let rho = 2.0;
             let beta = 8.0 / 3.0;
             let h = 0.01;
             let mut last_y = 0.;
@@ -81,8 +81,6 @@ fn main() {
                         );
                         seed = (new_x, new_y, new_z);
 
-                        // println!("seed = {:?}", seed);
-
                         if let Some(Message::Binary(v)) = common::read_non_blocking(&mut websocket)
                         {
                             if v.as_slice() == [1] {
@@ -94,8 +92,6 @@ fn main() {
                                 stream_state = ServerState::Syncing;
                             }
                         }
-
-                        // sleep(Duration::new(0, 5000));
                     }
                     ServerState::Syncing => {
                         websocket
@@ -127,21 +123,17 @@ fn main() {
                                 );
                                 seed = (new_x, new_y, new_z);
 
-                                // println!("seed = {:?}", seed);
-
                                 if last_y == y_prime && last_z == z_prime {
                                     sync_count += 1;
-                                    println!("Lorenz Attractors are synced");
                                     if sync_count == 100 {
+                                        println!("Sync Complete");
                                         common::send_request(&mut websocket, "Sync Complete", 2);
                                         stream_state = ServerState::Synced;
                                     }
                                 } else {
                                     sync_count = 0;
                                 }
-                                // Allows for a new message to be created, making the sync better, but
-                                // slower
-                                // sleep(Duration::new(0, 5000));
+
                                 last_y = new_y;
                                 last_z = new_z;
                             }

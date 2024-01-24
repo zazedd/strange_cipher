@@ -11,10 +11,7 @@ pub mod common {
         beta: f64,
         h: f64,
     ) -> (f64, f64, f64) {
-        let used_x = match x_prime {
-            Some(sync_x) => sync_x,
-            None => x,
-        };
+        let used_x = x_prime.unwrap_or(x);
         let new_x = used_x + (sigma * (y - used_x)) * h;
         let new_y = y + (used_x * (rho - z) - y) * h;
         let new_z = z + (used_x * y - beta * z) * h;
@@ -31,6 +28,14 @@ pub mod common {
             .expect(format!("Unable to send request: {}", name).as_str());
 
         println!("Sent: {}", name);
+    }
+
+    pub fn receive_msg<S>(socket: &mut WebSocket<S>) -> ()
+    where
+        S: std::io::Read + std::io::Write,
+    {
+        let msg = socket.read().expect("Error reading message");
+        println!("Recieved: {}", msg);
     }
 
     pub fn read_non_blocking<S>(socket: &mut WebSocket<S>) -> Option<Message>
