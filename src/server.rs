@@ -1,19 +1,13 @@
-use std::{
-    net::TcpListener,
-    net::TcpStream,
-    thread::{sleep, spawn},
-    time::{Duration, SystemTime},
-};
+use std::{net::TcpListener, thread::spawn, time::SystemTime};
 
 use tungstenite::{
     accept_hdr,
     handshake::server::{Request, Response},
-    stream::MaybeTlsStream,
-    util::NonBlockingError,
-    Message, WebSocket,
+    Message,
 };
 
 use base64::prelude::*;
+use common::common;
 
 enum ServerState {
     Unsynced,
@@ -21,52 +15,6 @@ enum ServerState {
     Synced,
     Encrypted,
     Decrypted(String),
-}
-
-fn lorenz_attractor(
-    x: f64,
-    x_prime: Option<f64>,
-    y: f64,
-    z: f64,
-    sigma: f64,
-    rho: f64,
-    beta: f64,
-    h: f64,
-) -> (f64, f64, f64) {
-    match x_prime {
-        None => {
-            let new_x = x + (sigma * (y - x)) * h;
-            let new_y = y + (x * (rho - z) - y) * h;
-            let new_z = z + (x * y - beta * z) * h;
-
-            (new_x, new_y, new_z)
-        }
-        Some(sync_x) => {
-            let new_x = sync_x + (sigma * (y - sync_x)) * h;
-            let new_y = y + (sync_x * (rho - z) - y) * h;
-            let new_z = z + (sync_x * y - beta * z) * h;
-
-            (new_x, new_y, new_z)
-        }
-    }
-}
-
-fn send_request(socket: &mut WebSocket<TcpStream>, name: &str, request_id: u8) -> () {
-    socket
-        .send(Message::Binary(vec![request_id]))
-        .expect(format!("Unable to send request: {}", name).as_str());
-
-    println!("Sent: {}", name);
-}
-
-fn read_non_blocking(socket: &mut WebSocket<TcpStream>) -> Option<Message> {
-    match socket.read() {
-        Ok(msg) => Some(msg),
-        Err(err) => match err.into_non_blocking() {
-            Some(e) => panic!("Panic at message {}", e),
-            None => None,
-        },
-    }
 }
 
 fn dencrypt(base64_message: &str, key_stream: &[u8]) -> Vec<u8> {
@@ -128,13 +76,15 @@ fn main() {
             loop {
                 match stream_state {
                     ServerState::Unsynced => {
-                        let (new_x, new_y, new_z) =
-                            lorenz_attractor(seed.0, None, seed.1, seed.2, sigma, rho, beta, h);
+                        let (new_x, new_y, new_z) = common::lorenz_attractor(
+                            seed.0, None, seed.1, seed.2, sigma, rho, beta, h,
+                        );
                         seed = (new_x, new_y, new_z);
 
                         // println!("seed = {:?}", seed);
 
-                        if let Some(Message::Binary(v)) = read_non_blocking(&mut websocket) {
+                        if let Some(Message::Binary(v)) = common::read_non_blocking(&mut websocket)
+                        {
                             if v.as_slice() == [1] {
                                 time = SystemTime::now();
                                 println!("Received: Sync Request");
@@ -165,7 +115,7 @@ fn main() {
                                     f64::from_ne_bytes(y_prime_msg[0..8].try_into().unwrap());
                                 let z_prime =
                                     f64::from_ne_bytes(z_prime_msg[0..8].try_into().unwrap());
-                                let (new_x, new_y, new_z) = lorenz_attractor(
+                                let (new_x, new_y, new_z) = common::lorenz_attractor(
                                     seed.0,
                                     Some(x_prime),
                                     seed.1,
@@ -183,7 +133,7 @@ fn main() {
                                     sync_count += 1;
                                     println!("Lorenz Attractors are synced");
                                     if sync_count == 100 {
-                                        send_request(&mut websocket, "Sync Complete", 2);
+                                        common::send_request(&mut websocket, "Sync Complete", 2);
                                         stream_state = ServerState::Synced;
                                     }
                                 } else {
@@ -204,14 +154,15 @@ fn main() {
                             .set_nonblocking(true)
                             .expect("Couldn't make socket non-blocking");
 
-                        let (new_x, new_y, new_z) =
-                            lorenz_attractor(seed.0, None, seed.1, seed.2, sigma, rho, beta, h);
+                        let (new_x, new_y, new_z) = common::lorenz_attractor(
+                            seed.0, None, seed.1, seed.2, sigma, rho, beta, h,
+                        );
                         seed = (new_x, new_y, new_z);
 
                         let bytes = seed.1.to_ne_bytes();
                         bytes.iter().for_each(|e| key_stream.push(*e));
 
-                        match read_non_blocking(&mut websocket) {
+                        match common::read_non_blocking(&mut websocket) {
                             Some(Message::Binary(v)) if v.as_slice() == [3] => {
                                 stream_state = ServerState::Encrypted
                             }

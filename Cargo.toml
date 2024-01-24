@@ -3,7 +3,9 @@ name = "lorenz_cryptography"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "common"
+path = "src/lib.rs"
 
 [dependencies]
 ascii_converter = "0.3.0"

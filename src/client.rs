@@ -1,9 +1,11 @@
 use std::io::{self, Write};
+use std::net::TcpStream;
+
+use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
+use url::Url;
 
 use base64::prelude::*;
-use std::{net::TcpStream, thread::sleep, time::Duration};
-use tungstenite::{connect, stream::MaybeTlsStream, util::NonBlockingError, Message, WebSocket};
-use url::Url;
+use common::common;
 
 enum ClientState {
     Syncing,
@@ -11,47 +13,9 @@ enum ClientState {
     Encrypted(String),
 }
 
-fn lorenz_attractor(
-    x: f64,
-    y: f64,
-    z: f64,
-    sigma: f64,
-    rho: f64,
-    beta: f64,
-    h: f64,
-) -> (f64, f64, f64) {
-    let new_x = x + (sigma * (y - x)) * h;
-    let new_y = y + (x * (rho - z) - y) * h;
-    let new_z = z + (x * y - beta * z) * h;
-
-    (new_x, new_y, new_z)
-}
-
-fn send_request(
-    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
-    name: &str,
-    request_id: u8,
-) -> () {
-    socket
-        .send(Message::Binary(vec![request_id]))
-        .expect(format!("Unable to send request: {}", name).as_str());
-
-    println!("Sent: {}", name);
-}
-
 fn receive_msg(socket: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> () {
     let msg = socket.read().expect("Error reading message");
     println!("Recieved: {}", msg);
-}
-
-fn read_non_blocking(socket: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> Option<Message> {
-    match socket.read() {
-        Ok(msg) => Some(msg),
-        Err(err) => match err.into_non_blocking() {
-            Some(e) => panic!("Panic at message {}", e),
-            None => None,
-        },
-    }
 }
 
 fn encrypt(message: &str, key_stream: &[u8]) -> Vec<u8> {
@@ -88,7 +52,7 @@ fn main() {
     let mut stream_state = ClientState::Syncing;
     let mut key_stream = Vec::new();
 
-    let mut state = lorenz_attractor(seed.0, seed.1, seed.2, sigma, rho, beta, h);
+    let mut state = common::lorenz_attractor(seed.0, None, seed.1, seed.2, sigma, rho, beta, h);
 
     let mut input = String::new();
     print!("Type a message you want to encrypt: ");
@@ -96,7 +60,7 @@ fn main() {
     io::stdin().read_line(&mut input).unwrap();
     let input = input.trim().to_string();
 
-    send_request(&mut socket, "Sync Request", 1);
+    common::send_request(&mut socket, "Sync Request", 1);
     receive_msg(&mut socket);
 
     match socket.get_mut() {
@@ -108,7 +72,8 @@ fn main() {
     loop {
         match stream_state {
             ClientState::Syncing => {
-                state = lorenz_attractor(state.0, state.1, state.2, sigma, rho, beta, h);
+                state =
+                    common::lorenz_attractor(state.0, None, state.1, state.2, sigma, rho, beta, h);
                 socket
                     .send(Message::Binary(state.0.to_ne_bytes().to_vec()))
                     .expect("Could not send x coordinate");
@@ -121,7 +86,7 @@ fn main() {
 
                 println!("state = {:?}", state);
 
-                match read_non_blocking(&mut socket) {
+                match common::read_non_blocking(&mut socket) {
                     Some(Message::Binary(v)) if v.as_slice() == [2] => {
                         println!("Server finished syncing. Encrypting now");
                         stream_state = ClientState::Encrypting;
@@ -141,7 +106,8 @@ fn main() {
                     continue;
                 }
 
-                state = lorenz_attractor(state.0, state.1, state.2, sigma, rho, beta, h);
+                state =
+                    common::lorenz_attractor(state.0, None, state.1, state.2, sigma, rho, beta, h);
 
                 let bytes = state.1.to_ne_bytes();
                 bytes.iter().for_each(|e| key_stream.push(*e));
@@ -151,7 +117,7 @@ fn main() {
                 println!("Finished encrypting with message = {}", ciphertext);
                 println!("Sending encrypted message");
 
-                send_request(&mut socket, "Encryption Completed", 3);
+                common::send_request(&mut socket, "Encryption Completed", 3);
 
                 socket
                     .send(Message::Text(ciphertext.to_string()))
