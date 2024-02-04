@@ -25,7 +25,7 @@ fn encrypt(message: &str, key_stream: &[u8]) -> Vec<u8> {
     ciphertext
 }
 
-fn main() {
+pub fn main() {
     env_logger::init();
 
     let (mut socket, response) =
@@ -111,10 +111,12 @@ fn main() {
                     .send(Message::Text(ciphertext.to_string()))
                     .expect("Could not send ciphertext");
 
-                let fst: u8 = key_stream.first().expect("No first").to_owned();
-                socket
-                    .send(Message::Binary(vec![fst]))
-                    .expect("Could not send fst");
+                let fst: &[u8] = &key_stream[0..8];
+                fst.iter().for_each(|&item| {
+                    socket
+                        .send(Message::Binary(vec![item]))
+                        .expect("Could not send byte")
+                });
 
                 break;
             }
@@ -122,4 +124,46 @@ fn main() {
     }
 
     println!("Done. Bye bye");
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    const SIGMA: f64 = 25.0;
+    const RHO: f64 = 2.0;
+    const BETA: f64 = 8.0 / 3.0;
+    const H: f64 = 0.01;
+
+    #[test]
+    fn test_encrypt() {
+        let mut key_stream = Vec::new();
+        while key_stream.len() < 16 {
+            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
+
+            let bytes = state.1.to_ne_bytes();
+            bytes.iter().for_each(|e| key_stream.push(*e));
+        }
+        let message = "Hello, Testing!";
+
+        let encrypted = BASE64_STANDARD.encode(encrypt(message, &key_stream));
+
+        assert_eq!("QrLPHFImLZRvpNcZU20s", encrypted);
+    }
+
+    #[test]
+    fn test_encrypt_empty_message() {
+        let mut key_stream = Vec::new();
+        while key_stream.len() < 16 {
+            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
+
+            let bytes = state.1.to_ne_bytes();
+            bytes.iter().for_each(|e| key_stream.push(*e));
+        }
+        let message = "";
+
+        let encrypted = BASE64_STANDARD.encode(encrypt(message, &key_stream));
+
+        assert_eq!("", encrypted);
+    }
 }

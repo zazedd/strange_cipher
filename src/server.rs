@@ -17,7 +17,7 @@ enum ServerState {
     Decrypted(String),
 }
 
-fn dencrypt(base64_message: &str, key_stream: &[u8]) -> Vec<u8> {
+fn decrypt(base64_message: &str, key_stream: &[u8]) -> Vec<u8> {
     let encrypted_message_bytes = BASE64_STANDARD.decode(base64_message).unwrap();
     let mut decrypted_message = Vec::new();
 
@@ -38,7 +38,7 @@ fn main() {
 
     for stream in server.incoming() {
         spawn(move || {
-            let callback = |req: &Request, mut response: Response| {
+            let callback = |req: &Request, response: Response| {
                 println!("New Client connected");
                 println!("The request's path is: {}", req.uri().path());
                 println!("The request's headers are:");
@@ -166,21 +166,36 @@ fn main() {
                             .get_mut()
                             .set_nonblocking(false)
                             .expect("Couldn't make socket blocking");
-                        match (websocket.read(), websocket.read()) {
-                            (Ok(Message::Text(ciphertext)), Ok(Message::Binary(fst))) => {
+                        match websocket.read() {
+                            Ok(Message::Text(ciphertext)) => {
                                 println!("Received ciphertext = {}", ciphertext);
 
-                                let first_item = fst.first().unwrap().to_owned();
-                                match key_stream.iter().position(|&item| item == first_item) {
+                                let mut first_float = Vec::new();
+
+                                for _ in 0..8 {
+                                    match websocket.read() {
+                                        Ok(Message::Binary(byte)) => first_float.push(byte),
+                                        _ => panic!("Could not read byte"),
+                                    }
+                                }
+
+                                let first_float =
+                                    first_float.into_iter().flatten().collect::<Vec<u8>>();
+
+                                match key_stream
+                                    .windows(8)
+                                    .position(|window| window == &first_float[0..8])
+                                {
                                     Some(index) => {
                                         let new_key_stream = key_stream[index..index + 16].to_vec();
-                                        let decoded_message =
-                                            dencrypt(&ciphertext, &new_key_stream);
+                                        let decoded_message = decrypt(&ciphertext, &new_key_stream);
                                         stream_state = ServerState::Decrypted(
                                             String::from_utf8(decoded_message).unwrap(),
                                         );
                                     }
-                                    None => panic!("Item {} not found in the vector.", first_item),
+                                    None => {
+                                        panic!("Item {:?} not found in the vector.", first_float)
+                                    }
                                 }
                             }
                             _ => panic!("Invalid message received"),
@@ -195,4 +210,49 @@ fn main() {
             }
         });
     }
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    const SIGMA: f64 = 25.0;
+    const RHO: f64 = 2.0;
+    const BETA: f64 = 8.0 / 3.0;
+    const H: f64 = 0.01;
+
+    #[test]
+    fn test_decrypt_synced() {
+        let mut key_stream = Vec::new();
+        while key_stream.len() < 16 {
+            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
+
+            let bytes = state.1.to_ne_bytes();
+            bytes.iter().for_each(|e| key_stream.push(*e));
+        }
+        let encrypted_message = "QrLPHFImLZRvpNcZU20s";
+
+        let decrypted = String::from_utf8(decrypt(encrypted_message, &key_stream)).unwrap();
+
+        assert_eq!("Hello, Testing!", decrypted);
+    }
+
+    #[test]
+    fn test_encrypt_empty_message_synced() {
+        let mut key_stream = Vec::new();
+        while key_stream.len() < 16 {
+            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
+
+            let bytes = state.1.to_ne_bytes();
+            bytes.iter().for_each(|e| key_stream.push(*e));
+        }
+        let encrypted_message = "";
+
+        let decrypted = String::from_utf8(decrypt(encrypted_message, &key_stream)).unwrap();
+
+        assert_eq!("", decrypted);
+    }
+
+    // TODO: sync test
+    // TODO: sync + decrypt test
 }

@@ -1,5 +1,5 @@
 [package]
-name = "lorenz_cryptography"
+name = "strange_cipher"
 version = "0.1.0"
 edition = "2021"
 
