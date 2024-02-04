@@ -52,3 +52,22 @@ pub mod common {
     }
 }
 
+pub mod testing_common {
+    use crate::common;
+
+    const SIGMA: f64 = 25.0;
+    const RHO: f64 = 2.0;
+    const BETA: f64 = 8.0 / 3.0;
+    const H: f64 = 0.01;
+
+    pub fn generate_key_stream() -> Vec<u8> {
+        let mut key_stream = Vec::new();
+        while key_stream.len() < 16 {
+            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
+
+            let bytes = state.1.to_ne_bytes();
+            bytes.iter().for_each(|e| key_stream.push(*e));
+        }
+        key_stream
+    }
+}

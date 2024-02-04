@@ -7,7 +7,7 @@ use tungstenite::{
 };
 
 use base64::prelude::*;
-use common::common;
+use strange_cipher::common;
 
 enum ServerState {
     Unsynced,
@@ -215,41 +215,23 @@ fn main() {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
-    const SIGMA: f64 = 25.0;
-    const RHO: f64 = 2.0;
-    const BETA: f64 = 8.0 / 3.0;
-    const H: f64 = 0.01;
+    use strange_cipher::testing_common::generate_key_stream;
 
     #[test]
     fn test_decrypt_synced() {
-        let mut key_stream = Vec::new();
-        while key_stream.len() < 16 {
-            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
+        let key_stream = generate_key_stream();
 
-            let bytes = state.1.to_ne_bytes();
-            bytes.iter().for_each(|e| key_stream.push(*e));
-        }
         let encrypted_message = "QrLPHFImLZRvpNcZU20s";
-
         let decrypted = String::from_utf8(decrypt(encrypted_message, &key_stream)).unwrap();
-
         assert_eq!("Hello, Testing!", decrypted);
     }
 
     #[test]
     fn test_encrypt_empty_message_synced() {
-        let mut key_stream = Vec::new();
-        while key_stream.len() < 16 {
-            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
+        let key_stream = generate_key_stream();
 
-            let bytes = state.1.to_ne_bytes();
-            bytes.iter().for_each(|e| key_stream.push(*e));
-        }
         let encrypted_message = "";
-
         let decrypted = String::from_utf8(decrypt(encrypted_message, &key_stream)).unwrap();
-
         assert_eq!("", decrypted);
     }
 

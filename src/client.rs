@@ -4,7 +4,7 @@ use tungstenite::{connect, Message};
 use url::Url;
 
 use base64::prelude::*;
-use common::common;
+use strange_cipher::common;
 
 enum ClientState {
     Syncing,
@@ -129,21 +129,11 @@ pub fn main() {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
-    const SIGMA: f64 = 25.0;
-    const RHO: f64 = 2.0;
-    const BETA: f64 = 8.0 / 3.0;
-    const H: f64 = 0.01;
+    use strange_cipher::testing_common::generate_key_stream;
 
     #[test]
     fn test_encrypt() {
-        let mut key_stream = Vec::new();
-        while key_stream.len() < 16 {
-            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
-
-            let bytes = state.1.to_ne_bytes();
-            bytes.iter().for_each(|e| key_stream.push(*e));
-        }
+        let key_stream = generate_key_stream();
         let message = "Hello, Testing!";
 
         let encrypted = BASE64_STANDARD.encode(encrypt(message, &key_stream));
@@ -153,13 +143,7 @@ mod unit_tests {
 
     #[test]
     fn test_encrypt_empty_message() {
-        let mut key_stream = Vec::new();
-        while key_stream.len() < 16 {
-            let state = common::lorenz_attractor(-10.0, None, -7.0, 35.0, SIGMA, RHO, BETA, H);
-
-            let bytes = state.1.to_ne_bytes();
-            bytes.iter().for_each(|e| key_stream.push(*e));
-        }
+        let key_stream = generate_key_stream();
         let message = "";
 
         let encrypted = BASE64_STANDARD.encode(encrypt(message, &key_stream));
