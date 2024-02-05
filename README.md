@@ -13,6 +13,8 @@ Attractors with different trajectories -> sync them -> create a stream cipher on
 The stream cipher is constructed with the current `y` coordinate of the Attractor at each frame.  
 Because the attractors are synced, the `y` coordinates should be the same, and so the server can decrypt the message.
 
+The whole process takes about 20-45ms.  
+
 But how can we sync these seemingly chaotic systems?
 
 ### Syncing Process
