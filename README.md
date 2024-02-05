@@ -4,13 +4,14 @@ An encryption/decryption algorithm based on Lorenz's Strange Attractor, and WebS
 ## How it Works
 
 There is a Lorenz Strange Attractor running on the server for each client, and one on the client side as well.  
-The Attractors have the same pre-conditions, but each start at different positions in space, resulting in vastly different trajectories.
+The Attractors have the same pre-conditions, but each start at different positions in space, resulting in vastly different trajectories.  
 The basic idea is:  
 ```
 Attractors with different trajectories -> sync them -> create a stream cipher on the server and client -> encrypt with client cipher -> send encrypted message -> decrypt with server cipher -> unsync the Attractors
 ```
 
-The stream cipher is constructed with the current `y` coordinate of the Attractor at each frame. Because the attractors are synced, the `y` coordinates should be the same, so the server is able to decrypt the message.
+The stream cipher is constructed with the current `y` coordinate of the Attractor at each frame.  
+Because the attractors are synced, the `y` coordinates should be the same, so the server is able to decrypt the message.
 
 But how can we sync these seemingly chaotic systems?
 
@@ -24,8 +25,9 @@ Steven Strogatz described, in 2003, an easy way of syncing two or more chaotic s
 ![sync](.github/sync.gif)
 
 In this example, the bottom Attractor, the `Reciever`, struggles to display the normal Butterfly-like behaviour at first, but then, after a few seconds, for each new point the other coordinates start coming
-closer and closer to the `Driver` Attractor, until they are dancing in perfect sync with their own doppelgänger, in Steven Strogatz’s words.
+closer and closer to the `Driver` Attractor, until they are dancing in perfect sync with their own doppelgänger, in Steven Strogatz’s words.  
 
+This implementation defines the Attractor on the client side as the `Driver` and the server side's as the `Reciever`.
 
 ### Why are Chaotic Attractors good for Cryptography?
 
