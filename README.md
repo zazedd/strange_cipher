@@ -21,7 +21,7 @@ Steven Strogatz described, in 2003, an easy way of syncing two or more chaotic s
 - The other system becomes the `Reciever`.
 - If we force the `Reciever`'s `x` coordinate to be equal to the `x` coordinate from the `Driver` system, we observe that, after a small number of iterations, the systems become synced
 
-![sync](.github/sync.git)
+![sync](.github/sync.gif)
 
 In this example, the bottom Attractor, the `Reciever`, struggles to display the normal Butterfly-like behaviour at first, but then, after a few seconds, for each new point the other coordinates start coming
 closer and closer to the `Driver` Attractor, until they are dancing in perfect sync with their own doppelgänger, in Steven Strogatz’s words.
