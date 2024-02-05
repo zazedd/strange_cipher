@@ -3,15 +3,15 @@ An encryption/decryption algorithm based on Lorenz's Strange Attractor, and WebS
 
 ## How it Works
 
-There is a Lorenz Strange Attractor running on the server for each client, and one on the client side as well.  
-The Attractors have the same pre-conditions, but each start at different positions in space, resulting in vastly different trajectories.  
+Both the server and the client have a running Lorenz Strange Attractor.  
+The Attractors have the same pre-conditions, but each starts at different positions in space, resulting in vastly different trajectories.  
 The basic idea is:  
 ```
-Attractors with different trajectories -> sync them -> create a stream cipher on the server and client -> encrypt with client cipher -> send encrypted message -> decrypt with server cipher -> unsync the Attractors
+Attractors with different trajectories -> sync them -> create a stream cipher on the server and client -> encrypt with client cipher -> send encrypted message -> decrypt with server cipher -> desync the Attractors
 ```
 
 The stream cipher is constructed with the current `y` coordinate of the Attractor at each frame.  
-Because the attractors are synced, the `y` coordinates should be the same, so the server is able to decrypt the message.
+Because the attractors are synced, the `y` coordinates should be the same, and so the server can decrypt the message.
 
 But how can we sync these seemingly chaotic systems?
 
@@ -24,15 +24,15 @@ Steven Strogatz described, in 2003, an easy way of syncing two or more chaotic s
 
 ![sync](.github/sync.gif)
 
-In this example, the bottom Attractor, the `Reciever`, struggles to display the normal Butterfly-like behaviour at first, but then, after a few seconds, for each new point the other coordinates start coming
-closer and closer to the `Driver` Attractor, until they are dancing in perfect sync with their own doppelgänger, in Steven Strogatz’s words.  
+In this example, the bottom Attractor, the `Reciever`, struggles to display the normal Butterfly-like behavior at first, but then, after a few seconds, for each new point the other coordinates start coming
+closer and closer to the `Driver` Attractor, until they are, in Steven Strogatz’s words, dancing in perfect sync with their doppelgänger.  
 
-This implementation defines the Attractor on the client side as the `Driver` and the server side's as the `Reciever`.
+This implementation defines the Attractor on the client side as the `Driver` and the server side as the `Reciever`.
 
-### Why are Chaotic Attractors good for Cryptography?
+### Why are Chaotic Attractors Good for Cryptography?
 
-They are **Deterministic**, meaning that, given the same pre-conditions, the outcome will always be the same.
-They are also very sensitive to those pre-conditions, any little change means a **huge** difference in the outcome, which one of the why they are called chaotic (the other is that it is hard to predict what will happen next).
+- They are **Deterministic**, meaning that, given the same pre-conditions, the outcome will always be the same.  
+- They are also very sensitive to those pre-conditions. The smallest of changes means a **huge** difference in the outcome, which is one of the why they are called chaotic (the other is that it is hard to predict what will happen next).
 
 ## Running
 
@@ -55,24 +55,28 @@ Run the tests with the command:
 cargo test
 ```
 
-The testing suite is comprised of:
+The testing suite is made up of:
 - [ ] Unit Tests
   - [x] Encryption function
-  - [x] Dencryption function
+  - [x] Decryption function
   - [ ] Lorenz Attractor Syncing
 
 - [x] Integration Tests
   - [x] 100 Non-Concurrent Clients
   - [x] 100 Concurrent Clients
 
+## Future Work
+- [ ] Client Verification with Keys
+- [ ] Server and Client Agreement on Different Pre-Conditions
+- [ ] Two-way Encryption/Decryption
+
 ## Security Considerations
 
-Please note that I did not formally prove this algorithm and it may not be suitable for real-world applications.  
-It may contain security concerns and/or not be 100% accurate all of the time.
+Please note that I did not formally prove this algorithm.  
+It may not be suitable for real-world applications, as it may contain security concerns and/or not be 100% accurate all of the time.
 
 ## Credits
 
 - **Syncing GIF**
-  - **Author:** Iaocopo Garizio
-  - **URL:** [syncgif](https://iacopogarizio.com/projects/synchronizing-lorenz-attractors-i)
-
+  - **Author:** Iacopo Garizio
+  - **Website**: [Synchronizing Lorenz attractors I](https://iacopogarizio.com/projects/synchronizing-lorenz-attractors-i)
