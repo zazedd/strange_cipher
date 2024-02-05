@@ -227,7 +227,7 @@ mod unit_tests {
     }
 
     #[test]
-    fn test_encrypt_empty_message_synced() {
+    fn test_decrypt_empty_message_synced() {
         let key_stream = generate_key_stream();
 
         let encrypted_message = "";
