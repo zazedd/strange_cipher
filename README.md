@@ -34,7 +34,7 @@ This implementation defines the Attractor on the client side as the `Driver` and
 ### Why are Chaotic Attractors Good for Cryptography?
 
 - They are **Deterministic**, meaning that, given the same pre-conditions, the outcome will always be the same.  
-- They are also very sensitive to those pre-conditions. The smallest of changes means a **huge** difference in the outcome, which is one of the why they are called chaotic (the other is that it is hard to predict what will happen next).
+- They are also very sensitive to those pre-conditions. The smallest of changes means a **huge** difference in the outcome, which is one of the why they are called chaotic (the other is that it is hard to predict what will happen next). This quality makes it worthwhile, because it means we can create secure ciphers.
 
 ## Running
 
@@ -77,6 +77,17 @@ The testing suite is made up of:
 
 Please note that I did not formally prove this algorithm.  
 It may not be suitable for real-world applications, as it may contain security concerns and/or not be 100% accurate all of the time.
+
+## Bibliography
+These papers were a big inspiration for this project:
+
+- **A Chaos Based Encryption Method Using Dynamical Systems with Strange Attractors** ([**Link**](https://arxiv.org/abs/1201.3114))
+  - **Authors:** Arash Sheikholeslam
+  - **Journal:** SECRYPT. 2009
+    
+- **Fast, parallel and secure cryptography algorithm using Lorenz's attractor** ([**Link**](https://arxiv.org/abs/1201.3114))
+  - **Authors:** Anderson Gonçalves Marco, Alexandre Souto Martinez, Odemir Martinez Bruno
+  - **Journal:** International Journal of Modern Physics C, Volume: 21, Issue: 3(2010) pp. 365-382
 
 ## Credits
 
