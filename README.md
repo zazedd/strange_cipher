@@ -40,7 +40,7 @@ This implementation defines the Attractor on the client side as the `Driver` and
 ### Why are Chaotic Attractors Good for Cryptography?
 
 - They are **Deterministic**, meaning that, given the same pre-conditions, the outcome will always be the same.  
-- They are also very sensitive to those pre-conditions. The smallest of changes means a **huge** difference in the outcome, which is one of the why they are called chaotic (the other is that it is hard to predict what will happen next). This quality makes it worthwhile, because it means we can create secure ciphers.
+- They are also very sensitive to those pre-conditions. The smallest of changes means a **huge** difference in the outcome, which is one of reasons why they are called chaotic (the other is that it is hard to predict what will happen next). This quality makes it worthwhile, because it means we can create secure ciphers.
 
 ## Running
 
