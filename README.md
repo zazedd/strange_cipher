@@ -7,7 +7,13 @@ Both the server and the client have a running Lorenz Strange Attractor.
 The Attractors have the same pre-conditions, but each starts at different positions in space, resulting in vastly different trajectories.  
 The basic idea is:  
 ```
-Attractors with different trajectories -> sync them -> create a stream cipher on the server and client -> encrypt with client cipher -> send encrypted message -> decrypt with server cipher -> desync the Attractors
+Attractors with different trajectories 
+  -> sync them 
+  -> create a stream cipher on the server and client 
+  -> encrypt with client cipher 
+  -> send encrypted message 
+  -> decrypt with server cipher
+  -> desync the Attractors
 ```
 
 The stream cipher is constructed with the current `y` coordinate of the Attractor at each frame.  
