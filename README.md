@@ -71,6 +71,7 @@ The testing suite is made up of:
 - [ ] Client Verification with Keys
 - [ ] Server and Client Agreement on Different Pre-Conditions
 - [ ] Two-way Encryption/Decryption
+- [ ] Add more Attractors and a way for the Server and Client to reach a consensus on which one to use
 
 ## Security Considerations
 
