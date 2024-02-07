@@ -7,6 +7,7 @@ use base64::prelude::*;
 use strange_cipher::common;
 
 enum ClientState {
+    Waiting,
     Syncing,
     Encrypting,
     Encrypted(String),
@@ -39,33 +40,51 @@ pub fn main() {
     }
 
     let seed = (-10.0, -7.0, 35.0);
-    let sigma = 25.0;
-    let rho = 2.0;
+    let sigma = 10.0;
+    let rho = 28.0;
     let beta = 8.0 / 3.0;
     let h = 0.01;
-    let mut stream_state = ClientState::Syncing;
+    let mut stream_state = ClientState::Waiting;
     let mut key_stream = Vec::new();
 
     let mut state = common::lorenz_attractor(seed.0, None, seed.1, seed.2, sigma, rho, beta, h);
-
     let mut input = String::new();
-    print!("Type a message you want to encrypt: ");
-    io::stdout().flush().unwrap();
-    io::stdin().read_line(&mut input).unwrap();
-    let input = input.trim().to_string();
-
-    common::send_request(&mut socket, "Sync Request", 1);
-    common::receive_msg(&mut socket);
-
-    match socket.get_mut() {
-        tungstenite::stream::MaybeTlsStream::Plain(stream) => stream.set_nonblocking(true),
-        _ => unimplemented!(),
-    }
-    .expect("Could not make socket non-blocking");
 
     loop {
         match stream_state {
+            ClientState::Waiting => {
+                match socket.get_mut() {
+                    tungstenite::stream::MaybeTlsStream::Plain(stream) => {
+                        stream.set_nonblocking(false)
+                    }
+                    _ => unimplemented!(),
+                }
+                .expect("Could not make socket non-blocking");
+
+                print!("Type a message you want to encrypt (Empty to Cancel): ");
+                input.clear();
+                io::stdout().flush().unwrap();
+                io::stdin().read_line(&mut input).unwrap();
+                let input = input.trim().to_string();
+
+                if input == "" {
+                    common::send_request(&mut socket, "Cancel Request", 0);
+                    break;
+                }
+
+                common::send_request(&mut socket, "Sync Request", 1);
+                common::receive_msg(&mut socket);
+                stream_state = ClientState::Syncing;
+            }
             ClientState::Syncing => {
+                match socket.get_mut() {
+                    tungstenite::stream::MaybeTlsStream::Plain(stream) => {
+                        stream.set_nonblocking(true)
+                    }
+                    _ => unimplemented!(),
+                }
+                .expect("Could not make socket non-blocking");
+
                 state =
                     common::lorenz_attractor(state.0, None, state.1, state.2, sigma, rho, beta, h);
                 socket
@@ -118,7 +137,7 @@ pub fn main() {
                         .expect("Could not send byte")
                 });
 
-                break;
+                stream_state = ClientState::Waiting;
             }
         }
     }

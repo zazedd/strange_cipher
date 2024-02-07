@@ -36,7 +36,7 @@ fn main() {
     let server = TcpListener::bind("127.0.0.1:3012").unwrap();
     println!("Server Started");
 
-    for stream in server.incoming() {
+    for (i, stream) in server.incoming().enumerate() {
         spawn(move || {
             let callback = |req: &Request, response: Response| {
                 println!("New Client connected");
@@ -63,8 +63,8 @@ fn main() {
                 .expect("Couldn't make socket non-blocking");
 
             let mut seed = (0.0, 1.0, 2.0);
-            let sigma = 25.0;
-            let rho = 2.0;
+            let sigma = 10.0;
+            let rho = 28.0;
             let beta = 8.0 / 3.0;
             let h = 0.01;
             let mut last_y = 0.;
@@ -81,16 +81,24 @@ fn main() {
                         );
                         seed = (new_x, new_y, new_z);
 
-                        if let Some(Message::Binary(v)) = common::read_non_blocking(&mut websocket)
-                        {
-                            if v.as_slice() == [1] {
-                                time = SystemTime::now();
-                                println!("Received: Sync Request");
-                                websocket
-                                    .send(Message::Text("Sync Request approved".to_string()))
-                                    .unwrap();
-                                stream_state = ServerState::Syncing;
-                            }
+                        match common::read_non_blocking(&mut websocket) {
+                            Some(Message::Binary(v)) => match v.as_slice() {
+                                [1] => {
+                                    time = SystemTime::now();
+                                    println!("Received: Sync Request");
+                                    websocket
+                                        .send(Message::Text("Sync Request approved".to_string()))
+                                        .unwrap();
+                                    stream_state = ServerState::Syncing;
+                                }
+                                [0] => {
+                                    println!("Received: Cancel Request");
+                                    println!("Client Number {} Left", i);
+                                    break;
+                                }
+                                _ => panic!("Invalid Request Received"),
+                            },
+                            _ => (),
                         }
                     }
                     ServerState::Syncing => {
@@ -202,9 +210,9 @@ fn main() {
                         }
                     }
                     ServerState::Decrypted(ref plaintext) => {
-                        println!("Decoded message: {}", plaintext);
+                        println!("Decoded message from client {}: {}", i, plaintext.trim());
                         println!("Took: {}ms", time.elapsed().unwrap().as_millis());
-                        break;
+                        stream_state = ServerState::Unsynced;
                     }
                 }
             }
