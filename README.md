@@ -4,7 +4,7 @@ An encryption/decryption algorithm based on Lorenz's Strange Attractor, and WebS
 ## How it Works
 
 Both the server and the client have a running Lorenz Strange Attractor.  
-The Attractors have the same pre-conditions, but each starts at different positions in space, resulting in vastly different trajectories.  
+The Attractors agree on the same pre-conditions, but each starts at different positions in space, resulting in vastly different trajectories.  
 The basic idea is:  
 ```
 Create public and private keys (X25519 eliptic curve Diffie-Hellman) 
