@@ -7,9 +7,9 @@ Both the server and the client have a running Lorenz Strange Attractor.
 The Attractors have the same pre-conditions, but each starts at different positions in space, resulting in vastly different trajectories.  
 The basic idea is:  
 ```
-Create public and private keys
-  -> reach pre-condition consensus using the shared secret
-  -> start Attractors with different trajectories 
+Create public and private keys (X25519 eliptic curve Diffie-Hellman) 
+  -> reach consensus on the system parameters (σ, ρ) using the shared secret
+  -> start Attractors with different coordinates/trajectories 
   -> sync them 
   -> create a stream cipher on the server and client 
   -> encrypt with client cipher 
@@ -27,7 +27,7 @@ But how can we sync these seemingly chaotic systems?
 
 ### Syncing Process
 
-Steven Strogatz described, in 2003, an easy way of syncing two or more chaotic systems:
+Pecora and Carroll [1], and later Steven Strogatz [2], described an easy way of syncing two or more chaotic systems:
 - Take one of the Systems, the `Driver`, that will transmit its current state in a one-way communication tunnel.
 - The other system becomes the `Reciever`.
 - If we force the `Reciever`'s `x` coordinate to be equal to the `x` coordinate from the `Driver` system, we observe that, after a small number of iterations, the systems become synced
@@ -88,14 +88,23 @@ Please note that I did not formally prove this algorithm.
 It may not be suitable for real-world applications, as it may contain security concerns and/or not be 100% accurate all of the time.
 
 ## Bibliography
-These papers were a big inspiration for this project:
+References:
+- [1] **Synchronization in chaotic systems** ([**Link**](https://www.researchgate.net/publication/301233050_Synchronization_in_chaotic_system))
+  - **Authors:** Pecora, Louis M., and Thomas L. Carroll.
+  - **Journal:** Physical review letters 64.8 (1990): 821.
 
-- **A Chaos Based Encryption Method Using Dynamical Systems with Strange Attractors** ([**Link**](https://arxiv.org/abs/1201.3114))
-  - **Authors:** Arash Sheikholeslam
+- [2] **Nonlinear dynamics and chaos with student solutions manual: With applications to physics, biology, chemistry, and engineering** ([**Link**](https://www.biodyn.ro/course/literatura/Nonlinear_Dynamics_and_Chaos_2018_Steven_H._Strogatz.pdf))
+  - **Author:** Strogatz, Steven H
+  - **Publisher:** CRC press
+  - **Edition:** 2018
+    
+Inspiration for this project:
+- **A Chaos Based Encryption Method Using Dynamical Systems with Strange Attractors** ([**Link**](https://www.scitepress.org/papers/2009/21054/21054.pdf))
+  - **Authors:** Sheikholeslam, S. Arash
   - **Journal:** SECRYPT. 2009
     
 - **Fast, parallel and secure cryptography algorithm using Lorenz's attractor** ([**Link**](https://arxiv.org/abs/1201.3114))
-  - **Authors:** Anderson Gonçalves Marco, Alexandre Souto Martinez, Odemir Martinez Bruno
+  - **Authors:** Marco, Anderson Gonçalves, Alexandre Souto Martinez, and Odemir Martinez Bruno
   - **Journal:** International Journal of Modern Physics C, Volume: 21, Issue: 3(2010) pp. 365-382
 
 ## Credits
