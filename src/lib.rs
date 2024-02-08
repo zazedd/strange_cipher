@@ -50,6 +50,39 @@ pub mod common {
             },
         }
     }
+
+    pub fn lin_interp(input: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+        y1 + ((y2 - y1) / (x2 - x1)) * (input - x1)
+    }
+
+    pub fn interpolate_sigma(rho: f64) -> f64 {
+        let rho_range = [24.0, 57.0];
+        let sigma_range_for_24 = [6.0, 14.5];
+        let sigma_range_for_60 = [4.0, 27.0];
+
+        match rho {
+            r if r == rho_range[0] => sigma_range_for_24[0],
+            r if r == rho_range[1] => sigma_range_for_60[1],
+            _ => {
+                let sigma_for_24 = lin_interp(
+                    rho,
+                    rho_range[0],
+                    sigma_range_for_24[0],
+                    rho_range[1],
+                    sigma_range_for_24[1],
+                );
+                let sigma_for_60 = lin_interp(
+                    rho,
+                    rho_range[0],
+                    sigma_range_for_60[0],
+                    rho_range[1],
+                    sigma_range_for_60[1],
+                );
+
+                lin_interp(rho, rho_range[0], sigma_for_24, rho_range[1], sigma_for_60)
+            }
+        }
+    }
 }
 
 pub mod testing_common {

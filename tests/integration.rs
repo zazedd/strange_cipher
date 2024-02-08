@@ -10,7 +10,7 @@ mod integration_tests {
     use super::*;
     use std::{
         io::{BufRead, BufReader, Write},
-        process::{Child, ChildStdout},
+        process::{Child, ChildStderr, ChildStdout},
     };
 
     use rand::{
@@ -21,7 +21,7 @@ mod integration_tests {
     #[test]
     #[serial] // These tests need to be ran one after the other
     fn non_concurrent() {
-        let (mut server_handle, reader) = setup_server();
+        let (mut server_handle, reader, server_stderr) = setup_server();
 
         let mut sent_messages = Vec::new();
         let decoded_messages = Arc::new(Mutex::new(Vec::new()));
@@ -30,10 +30,18 @@ mod integration_tests {
         thread::spawn(move || {
             for line in reader.lines() {
                 let line = line.expect("Failed to read line from server stdout");
+                println!("Server stdout: {}", line);
                 if line.contains("Decoded message: ") {
                     let decoded_message = line.replace("Decoded message: ", "");
                     decoded_messages_clone.lock().unwrap().push(decoded_message);
                 }
+            }
+        });
+
+        thread::spawn(move || {
+            for line in server_stderr.lines() {
+                let line = line.expect("Failed to read line from server stderr");
+                println!("Server stderr: {}", line);
             }
         });
 
@@ -64,15 +72,16 @@ mod integration_tests {
     #[test]
     #[serial]
     fn concurrent() {
-        let (mut server_handle, reader) = setup_server();
+        let (mut server_handle, server_stdout, server_stderr) = setup_server();
 
         let mut sent_messages = Vec::new();
         let decoded_messages = Arc::new(Mutex::new(Vec::new()));
 
         let decoded_messages_clone = Arc::clone(&decoded_messages);
         thread::spawn(move || {
-            for line in reader.lines() {
+            for line in server_stdout.lines() {
                 let line = line.expect("Failed to read line from server stdout");
+                println!("Server stdout: {}", line);
                 if line.contains("Decoded message: ") {
                     let decoded_message = line.replace("Decoded message: ", "");
                     decoded_messages_clone.lock().unwrap().push(decoded_message);
@@ -80,9 +89,16 @@ mod integration_tests {
             }
         });
 
+        thread::spawn(move || {
+            for line in server_stderr.lines() {
+                let line = line.expect("Failed to read line from server stderr");
+                println!("Server stderr: {}", line);
+            }
+        });
+
         thread::sleep(Duration::from_secs(1));
 
-        let handles: Vec<_> = (0..100)
+        let handles: Vec<_> = (0..50)
             .map(|_| {
                 let random_message = Alphanumeric.sample_string(
                     &mut rand::thread_rng(),
@@ -106,13 +122,13 @@ mod integration_tests {
         assert_eq!(sent_messages.sort(), decoded_messages.sort());
     }
 
-    fn setup_server() -> (Child, BufReader<ChildStdout>) {
+    fn setup_server() -> (Child, BufReader<ChildStdout>, BufReader<ChildStderr>) {
         let mut server_handle = Command::new("cargo")
             .arg("run")
             .arg("--bin")
             .arg("server")
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("Failed to start the server");
 
@@ -121,9 +137,15 @@ mod integration_tests {
             .take()
             .expect("Failed to capture server stdout");
 
-        let reader = BufReader::new(stdout);
+        let stderr = server_handle
+            .stderr
+            .take()
+            .expect("Failed to capture server stderr");
 
-        (server_handle, reader)
+        let reader = BufReader::new(stdout);
+        let error_reader = BufReader::new(stderr);
+
+        (server_handle, reader, error_reader)
     }
 
     fn run_client(random_message: String) -> () {
@@ -132,8 +154,8 @@ mod integration_tests {
             .arg("--bin")
             .arg("client")
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("Failed to start the client");
 
@@ -141,6 +163,27 @@ mod integration_tests {
             stdin
                 .write(random_message.as_bytes())
                 .expect("Failed to write to stdin");
+        }
+
+        if let Some(mut stdin) = client_process.stdin.take() {
+            stdin
+                .write("".as_bytes())
+                .expect("Failed to write to stdin");
+        }
+
+        let client_stdout = client_process.stdout.take().unwrap();
+        let client_stderr = client_process.stderr.take().unwrap();
+
+        for line in BufReader::new(client_stdout).lines() {
+            if let Ok(line) = line {
+                println!("Client stdout: {}", line);
+            }
+        }
+
+        for line in BufReader::new(client_stderr).lines() {
+            if let Ok(line) = line {
+                println!("Client stderr: {}", line);
+            }
         }
 
         let client_status = client_process

@@ -3,14 +3,31 @@ use std::io::{self, Write};
 use tungstenite::{connect, Message};
 use url::Url;
 
+use rand::rngs::OsRng;
+use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
+
 use base64::prelude::*;
 use strange_cipher::common;
 
 enum ClientState {
-    Waiting,
-    Syncing,
-    Encrypting,
-    Encrypted(String),
+    Unverified,
+    Waiting {
+        rho: f64,
+        sigma: f64,
+    },
+    Syncing {
+        rho: f64,
+        sigma: f64,
+    },
+    Encrypting {
+        rho: f64,
+        sigma: f64,
+    },
+    Encrypted {
+        rho: f64,
+        sigma: f64,
+        ciphertext: String,
+    },
 }
 
 fn encrypt(message: &str, key_stream: &[u8]) -> Vec<u8> {
@@ -40,19 +57,50 @@ pub fn main() {
     }
 
     let seed = (-10.0, -7.0, 35.0);
-    let sigma = 10.0;
-    let rho = 28.0;
     let beta = 8.0 / 3.0;
     let h = 0.01;
-    let mut stream_state = ClientState::Waiting;
+    let mut stream_state = ClientState::Unverified;
     let mut key_stream = Vec::new();
 
-    let mut state = common::lorenz_attractor(seed.0, None, seed.1, seed.2, sigma, rho, beta, h);
+    let mut state = (0.0, 0.0, 0.0);
     let mut input = String::new();
 
     loop {
         match stream_state {
-            ClientState::Waiting => {
+            ClientState::Unverified => {
+                println!("Starting Key exchange");
+
+                let client_secret_key = EphemeralSecret::random_from_rng(OsRng);
+                let client_public_key = PublicKey::from(&client_secret_key);
+                let shared_secret: SharedSecret;
+
+                socket
+                    .send(Message::Binary(client_public_key.to_bytes().to_vec()))
+                    .expect("Could not send public key");
+
+                match socket.read() {
+                    Ok(Message::Binary(server_public_key_bytes)) => {
+                        let mut byte_array: [u8; 32] = [0; 32];
+                        byte_array[..32].copy_from_slice(server_public_key_bytes.as_slice());
+                        let server_public_key = PublicKey::from(byte_array);
+
+                        shared_secret = client_secret_key.diffie_hellman(&server_public_key);
+                    }
+                    _ => panic!("Recieved Invalid Key"),
+                }
+
+                let result = shared_secret.to_bytes()[10];
+                let rho = common::lin_interp(result as f64, 0.0, 24.0, 255.0, 57.0);
+                let sigma = common::interpolate_sigma(rho);
+
+                println!("rho = {}", rho);
+                println!("sigma = {}", sigma);
+
+                state = common::lorenz_attractor(seed.0, None, seed.1, seed.2, sigma, rho, beta, h);
+
+                stream_state = ClientState::Waiting { rho, sigma };
+            }
+            ClientState::Waiting { rho, sigma } => {
                 match socket.get_mut() {
                     tungstenite::stream::MaybeTlsStream::Plain(stream) => {
                         stream.set_nonblocking(false)
@@ -74,9 +122,9 @@ pub fn main() {
 
                 common::send_request(&mut socket, "Sync Request", 1);
                 common::receive_msg(&mut socket);
-                stream_state = ClientState::Syncing;
+                stream_state = ClientState::Syncing { rho, sigma };
             }
-            ClientState::Syncing => {
+            ClientState::Syncing { rho, sigma } => {
                 match socket.get_mut() {
                     tungstenite::stream::MaybeTlsStream::Plain(stream) => {
                         stream.set_nonblocking(true)
@@ -100,16 +148,20 @@ pub fn main() {
                 match common::read_non_blocking(&mut socket) {
                     Some(Message::Binary(v)) if v.as_slice() == [2] => {
                         println!("Server finished syncing. Encrypting now");
-                        stream_state = ClientState::Encrypting;
+                        stream_state = ClientState::Encrypting { rho, sigma };
                     }
                     _ => (),
                 }
             }
 
-            ClientState::Encrypting => {
+            ClientState::Encrypting { rho, sigma } => {
                 if key_stream.len() == 16 {
                     let ciphertext = BASE64_STANDARD.encode(encrypt(input.as_str(), &key_stream));
-                    stream_state = ClientState::Encrypted(ciphertext);
+                    stream_state = ClientState::Encrypted {
+                        rho,
+                        sigma,
+                        ciphertext,
+                    };
                     continue;
                 }
 
@@ -120,7 +172,11 @@ pub fn main() {
                 bytes.iter().for_each(|e| key_stream.push(*e));
             }
 
-            ClientState::Encrypted(ref ciphertext) => {
+            ClientState::Encrypted {
+                rho,
+                sigma,
+                ref ciphertext,
+            } => {
                 println!("Finished encrypting with message = {}", ciphertext);
                 println!("Sending encrypted message");
 
@@ -137,7 +193,7 @@ pub fn main() {
                         .expect("Could not send byte")
                 });
 
-                stream_state = ClientState::Waiting;
+                stream_state = ClientState::Waiting { rho, sigma };
             }
         }
     }
