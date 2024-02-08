@@ -7,7 +7,9 @@ Both the server and the client have a running Lorenz Strange Attractor.
 The Attractors have the same pre-conditions, but each starts at different positions in space, resulting in vastly different trajectories.  
 The basic idea is:  
 ```
-Attractors with different trajectories 
+Create public and private keys
+  -> reach pre-condition consensus using the shared secret
+  -> start Attractors with different trajectories 
   -> sync them 
   -> create a stream cipher on the server and client 
   -> encrypt with client cipher 
@@ -19,7 +21,7 @@ Attractors with different trajectories
 The stream cipher is constructed with the current `y` coordinate of the Attractor at each frame.  
 Because the attractors are synced, the `y` coordinates should be the same, and so the server can decrypt the message.
 
-The whole process takes about 20-45ms.  
+The whole process takes about 30-55ms.  
 
 But how can we sync these seemingly chaotic systems?
 
@@ -71,13 +73,14 @@ The testing suite is made up of:
 
 - [x] Integration Tests
   - [x] 100 Non-Concurrent Clients
-  - [x] 100 Concurrent Clients
+  - [x] 50 Concurrent Clients
 
 ## Future Work
-- [ ] Client Verification with Keys
-- [ ] Server and Client Agreement on Different Pre-Conditions
+- [x] Client Verification with Keys
+- [x] Server and Client Agreement on Different Pre-Conditions
 - [ ] Two-way Encryption/Decryption
 - [ ] Add more Attractors and a way for the Server and Client to reach a consensus on which one to use
+- [ ] Add more capacity for concurrent clients
 
 ## Security Considerations
 
